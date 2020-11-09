@@ -77,7 +77,6 @@ def giftList ():
             server.set_debuglevel(1)
             server.starttls()
             server.login(sent_from, API_key)
-            return
             server.sendmail(sent_from, sent_to, message)
             server.close()
             logging.info('Email sent to ' + gifter +'!')
