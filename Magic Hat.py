@@ -1,9 +1,11 @@
 import smtplib
 import logging
 import secret
+from datetime import datetime
 
 # Setup logfile in case program crashes
 logging.basicConfig(filename='Magic Hat Log File.log',level=logging.INFO)
+currentYear = datetime.now().year
 
 # Read in Gifters list of dicts "database"
 import json
@@ -15,7 +17,7 @@ try:
 except Exception as ex:
     logging.error(ex)
     print (ex)
-    print ('Failed to open Output file, please exit program')
+    print ('Failed to open Output file, exiting...')
 
 #Find collisions
 def search(values, searchFor):
@@ -56,7 +58,7 @@ def giftList ():
                 logging.info("We found a good list! (After only %d attempts)" % ShuffleCount)
                 break
 
-    subject = "Secret Santa 2020"
+    subject = "Secret Santa " + str(currentYear)
 	
     try:
         giftList = open('./Output', 'w+')
@@ -70,14 +72,14 @@ def giftList ():
         sent_to = str(gifterEmails[i])
         body = "Hello " + gifter + ",\n\nThe magic hat has decided that you will be gifting to " + giftee + " this year!\n\nThis is an automated message, but please feel free to reply if you have any questions or need " + giftee + "'s address.\n\n-One of Santa's Helpers"
 
-        message = "From: "+sent_from+"\r\nTo: "+sent_to+"\r\nSubject: "+subject+"\r\n\r\n"+body
+        message = "From: "+secret.sent_from+"\r\nTo: "+sent_to+"\r\nSubject: "+subject+"\r\n\r\n"+body
         
         try:
             server = smtplib.SMTP('smtp.gmail.com', 587)
             server.set_debuglevel(1)
             server.starttls()
-            server.login(sent_from, API_key)
-            server.sendmail(sent_from, sent_to, message)
+            server.login(secret.sent_from, secret.API_key)
+            server.sendmail(secret.sent_from, sent_to, message)
             server.close()
             logging.info('Email sent to ' + gifter +'!')
             print ('Email sent to ' + gifter +'!')
@@ -100,7 +102,7 @@ def viewGifters ():
 
 while (True):
     print ("\n\nWhat would you like to do?")
-    print ("1: Create new gift list")
+    print ("1: Create new "+str(currentYear)+" gift list")
     print ("2: View current Gifters")
     print ("3: Exit\n")
 
@@ -121,6 +123,3 @@ while (True):
         break
     else:
         print ("That was not a valid selection, please try again")
-
-    
-    
