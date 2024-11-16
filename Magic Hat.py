@@ -27,7 +27,6 @@ for gifterName in gifterNames:
         gifterNameEmails[gifterName] = gifterEmail
         gifterEmails.remove(gifterEmail)
         break
-print(gifterNameEmails)
 
 giftOut = {}
 
@@ -131,8 +130,7 @@ def emailNames(gifterNames, gifteeNames):
         logging.critical(ex, exc_info=True)
         exit
 
-    subject = "CORRECTED Secret Santa " + str(currentYear)
-    #subject = "Secret Santa " + str(currentYear)
+    subject = "Secret Santa " + str(currentYear)
 
     for i, (gifter, giftee) in enumerate(zip(gifterNames, gifteeNames)):
         outFile.write(gifter + " --> " + giftee + "\n")
