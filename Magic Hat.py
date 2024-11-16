@@ -20,7 +20,15 @@ with open ('Gifternames.json', 'r') as f:
     Gifters = json.load(f)
 
 gifterNames = [name['Name'] for name in Gifters]
-gifterEmails = [email['Email'] for email in Gifters]
+gifterEmails = [name['Email'] for name in Gifters]
+gifterNameEmails = {}
+for gifterName in gifterNames:
+    for gifterEmail in gifterEmails:
+        gifterNameEmails[gifterName] = gifterEmail
+        gifterEmails.remove(gifterEmail)
+        break
+print(gifterNameEmails)
+
 giftOut = {}
 
 for i in range(0, len(gifterNames)):
@@ -123,11 +131,12 @@ def emailNames(gifterNames, gifteeNames):
         logging.critical(ex, exc_info=True)
         exit
 
-    subject = "Secret Santa " + str(currentYear)
+    subject = "CORRECTED Secret Santa " + str(currentYear)
+    #subject = "Secret Santa " + str(currentYear)
 
     for i, (gifter, giftee) in enumerate(zip(gifterNames, gifteeNames)):
         outFile.write(gifter + " --> " + giftee + "\n")
-        sent_to = str(gifterEmails[i])
+        sent_to = str(gifterNameEmails[gifter])
         body = "Hello " + gifter + ",\n\nThe magic hat has decided that you will be gifting to " + giftee + " this year!\n\nThis is an automated message, but please feel free to reply if you have any questions or need " + giftee + "'s address.\n\n-One of Santa's Helpers"
 
         message = "From: "+secret.sent_from+"\r\nTo: "+sent_to+"\r\nSubject: "+subject+"\r\n\r\n"+body
@@ -139,9 +148,10 @@ def emailNames(gifterNames, gifteeNames):
             server.login(secret.sent_from, secret.API_key)
             server.sendmail(secret.sent_from, sent_to, message)
             server.close()
-            logging.info('Email sent to ' + gifter +'!')
+            logging.debug('\nEmail subject ' + subject +' with body:\n' + body + '\n')
+            logging.info('Sent to ' + gifter +' at '+sent_to+'!')
         except Exception as ex:
-            logging.critical("Unable to send email to: " + gifter)
+            logging.critical("Failed to send "+gifter+"'s email to: " + sent_to)
             logging.critical(ex, exc_info=True)
     logging.info("All emails successfully sent out!")
     outFile.close()
