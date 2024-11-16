@@ -2,73 +2,131 @@ import smtplib
 import logging
 import secret
 from datetime import datetime
+import copy
+import random
+#from collections import Counter
+from itertools import islice
 
 # Setup logfile in case program crashes
+#logging.basicConfig(filename='Magic Hat Log File.log',level=logging.DEBUG)
 logging.basicConfig(filename='Magic Hat Log File.log',level=logging.INFO)
+logging.getLogger().addHandler(logging.StreamHandler()) # output all messages to console too
 currentYear = datetime.now().year
 
 # Read in Gifters list of dicts "database"
 import json
+#with open ('GifternamesTest.json', 'r') as f:
 with open ('Gifternames.json', 'r') as f:
     Gifters = json.load(f)
 
-try:
-    giftList = open('./Output.txt', 'w+')
-except Exception as ex:
-    logging.error(ex)
-    print (ex)
-    print ('Failed to open Output file, exiting...')
+gifterNames = [name['Name'] for name in Gifters]
+gifterEmails = [email['Email'] for email in Gifters]
+giftOut = {}
 
-#Find collisions
-def search(values, searchFor):
-    for k in values:
-        logging.debug(">>>Looking for " + searchFor + ", checking " + values[k])
-        if searchFor in values[k]:
-            logging.debug(">>>Matched! " + searchFor + " and " + values[k])
-            return True
-    return False
+for i in range(0, len(gifterNames)):
+    # Ensure that no one is able to match with themselves or anyone on their restricted names list
+    valid_giftees = [name for name in gifterNames if name not in Gifters[i].values()]
+    giftOut[gifterNames[i]] = valid_giftees
+
+    logging.info(f"{gifterNames[i]}: {len(valid_giftees)} possibile recipients: "+str(valid_giftees))
+
+    #Sort giftOut by least number of possible valid giftees first
+    giftOut = dict(sorted(giftOut.items(), key=lambda x: len(x[1]), reverse = False))
+    logging.debug("Sorted giftOut to process least restricted gifters first: "+str(giftOut))
 
 #Create new gifting list
 def giftList ():
-    from random import shuffle
 
-    gifterNames = [name['Name'] for name in Gifters]
-    gifterEmails = [email['Email'] for email in Gifters]
-    gifteeNames = [name['Name'] for name in Gifters]
+    def backtrack(assignedGifters, giverReceivers):
+        if not giverReceivers:
+            logging.info("Found a valid list! Attempting to send emails...")
+            logging.debug("Found a valid list! Attempting to send emails for: "+str(assignedGifters))
+            emailNames(assignedGifters.keys(), assignedGifters.values())
+            return True # Found a valid gift list!
+        
+        #Sort giverReceivers by least number of possible valid giftees first
+        giverReceivers = dict(sorted(giverReceivers.items(), key=lambda x: len(x[1])))
+        logging.debug(">>>>>>>>>>>>>>>>>>Sorted giverReceivers to process most restricted gifters first: "+str(giverReceivers))
 
-    ShuffleCount = 0
-    #Shuffle until we get a valid dataset
-    while (True):
-        ShuffleCount += 1
-        logging.debug("******************Shuffling " + str(ShuffleCount))
-        shuffle (gifteeNames)
+        # Check if multiple gifters share same fewer possibleReceivers, impossible to find valid gift list
+        if len(giverReceivers.keys()) > 1: # Ensure we have multiple gifters left!
+            firstGifter = list(giverReceivers.keys())[0]
+            impossible = True
+            for i in islice(giverReceivers.keys(), len(giverReceivers[firstGifter])+1):
+                if sorted(giverReceivers[firstGifter]) != sorted(giverReceivers[i]):
+                    impossible = False
 
-        #Check if anyone is gifting to themself
-        duplicates = [i for i, j in zip(gifterNames,gifteeNames) if i == j]
-        if not duplicates:
-            #Check to ensure no illegal gifting
-            invalid = False
-            for i, (gifter, giftee) in enumerate(zip(gifterNames, gifteeNames)):
-                logging.debug("Let's see if " + gifter + " can give to " + giftee)            
-                if (search(Gifters[i], giftee)):
-                    logging.debug(gifter + " can't give to " + giftee + ", reshuffling for attempt #" + str(ShuffleCount))
-                    invalid = True
-                    break
-            if (invalid == False):
-                logging.info("We found a good list! (After only %d attempts)" % ShuffleCount)
-                break
+            if impossible:
+                logging.debug("<<<<<<<<<<<<<<<<<<Encountered too many gifters with the same possibleReceivers, backtracking...")
+                return False
+
+        logging.debug(">>>>>>>>>>>>>>>>>>Starting assignment loop with giverReceivers as: "+str(giverReceivers)+", and assignedGifters as: "+str(assignedGifters))
+        for giver, possibleReceivers in giverReceivers.items():
+            logging.debug(">>>>>>>>>Checking giver("+str(giver)+"), with giverReceivers as: "+str(giverReceivers)+", and assignedGifters as: "+str(assignedGifters))
+
+            # Randomly shuffle possibleReceivers
+            logging.debug("Before shuffle:"+str(possibleReceivers))
+            random.shuffle(possibleReceivers)
+            logging.debug("After shuffle:"+str(possibleReceivers))
+            for receiver in possibleReceivers:
+                logging.debug("Should "+str(giver)+" gift to "+str(receiver)+"?")
+                
+                tempAssignedGifters = copy.deepcopy(assignedGifters)
+                tempGiverReceivers = copy.deepcopy(giverReceivers)
+                # Try assigning each gifter a giftee
+                tempAssignedGifters[giver] = receiver
+                logging.debug("Added " + giver + " : " + receiver + " to tempAssignedGifters: "+str(tempAssignedGifters))
+                #logging.debug("Before removing "+ giver + " from tempGiverReceivers: "+str(tempGiverReceivers))
+                # Remove the giver we just assigned a receiver, they do not need to be assigned another receiver
+                tempGiverReceivers.pop(giver, None)
+                logging.debug("After removing giver("+ giver + ") from tempGiverReceivers: "+str(tempGiverReceivers))
+
+                # Remove the receiver from everyone's possibleReceivers, they do not need to receive a second gift
+                for giverIter, possibleReceiversIter in tempGiverReceivers.items():
+                    for i in possibleReceiversIter:
+                        if i == receiver:
+                            #logging.debug("Before remove "+ receiver + " from " + giverIter + "'s possibleReceivers: "+str(possibleReceiversIter))
+                            possibleReceiversIter.remove(receiver)
+                            logging.debug("After removing rcver("+ receiver + ") from " + giverIter + "'s possibleReceivers:: "+str(possibleReceiversIter))
+                            if len(possibleReceiversIter) < 1:
+                                logging.debug("<<<<<<<<<<<<<<<<<<Invalid gift list, "+ giverIter +" has "+ str(len(possibleReceiversIter)) +", backtracking...")
+                                return False
+                
+                # If this is a valid match, keep going
+                logging.debug(giver+"->"+receiver+" is valid, calling backtrack with tempAssignedGifters:"+str(tempAssignedGifters)+", and tempGiverReceivers:"+str(tempGiverReceivers))
+                if backtrack(copy.deepcopy(tempAssignedGifters), copy.deepcopy(tempGiverReceivers)):
+                    return True
+                # Backtrack if assignment didn't lead to a solution
+                # Nothing to undo here as for receiver in possibleReceivers: loop will
+                # now continue, and the next iteration will start by making new temporary
+                # deepcopys of both assignedGifters and giverReceivers to try next choice with
+
+        return False    
+
+    assignedGifters = {}
+    
+    if backtrack(assignedGifters, giftOut):
+        # Attempt to send emails using valid assignedGifters pairs
+        logging.info("Found a valid list, emails successfully sent!")
+        return True
+    else:
+        logging.info("No valid gift list found! Please check the restrictions and try again.")
+        return False
+    return
+
+def emailNames(gifterNames, gifteeNames):
+
+    try:
+        outFile = open('./'+str(currentYear)+' Output.txt', 'w+')
+    except Exception as ex:
+        logging.critical('Failed to open Output file, exiting...')
+        logging.critical(ex, exc_info=True)
+        exit
 
     subject = "Secret Santa " + str(currentYear)
-	
-    try:
-        giftList = open('./Output', 'w+')
-    except Exception as ex:
-        logging.error(ex)
-        logging.error("Unable to open output file")
-        return
+
     for i, (gifter, giftee) in enumerate(zip(gifterNames, gifteeNames)):
-        #print (gifter + " --> " + giftee)
-        giftList.write(gifter + " --> " + giftee + "\n")
+        outFile.write(gifter + " --> " + giftee + "\n")
         sent_to = str(gifterEmails[i])
         body = "Hello " + gifter + ",\n\nThe magic hat has decided that you will be gifting to " + giftee + " this year!\n\nThis is an automated message, but please feel free to reply if you have any questions or need " + giftee + "'s address.\n\n-One of Santa's Helpers"
 
@@ -82,14 +140,11 @@ def giftList ():
             server.sendmail(secret.sent_from, sent_to, message)
             server.close()
             logging.info('Email sent to ' + gifter +'!')
-            print ('Email sent to ' + gifter +'!')
         except Exception as ex:
-            logging.error(ex)
-            logging.error("Unable to send email to: " + gifter)
-            print ("Unable to send email to: " + gifter)
-            return
-    print ("All emails successfully sent out!")
-    giftList.close()
+            logging.critical("Unable to send email to: " + gifter)
+            logging.critical(ex, exc_info=True)
+    logging.info("All emails successfully sent out!")
+    outFile.close()
     return
     
 #View current gifters
@@ -116,10 +171,14 @@ while (True):
 
     if (choice == 1):
         giftList()
+        break
     elif (choice == 2):
         viewGifters()
     elif (choice == 3):
-        print ("Thank you, shutting down")
         break
     else:
         print ("That was not a valid selection, please try again")
+print ("Thank you, shutting down")
+
+    
+    
