@@ -8,10 +8,10 @@ import random
 from itertools import islice
 
 # Setup logfile in case program crashes
-#logging.basicConfig(filename='Magic Hat Log File.log',level=logging.DEBUG)
+logging.basicConfig(filename='Magic Hat Log File.log',level=logging.DEBUG)
 logging.basicConfig(filename='Magic Hat Log File.log',level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler()) # output all messages to console too
-currentYear = datetime.now().year
+currentYear = datetime.now().year + 1
 
 # Read in Gifters list of dicts "database"
 import json
@@ -48,7 +48,7 @@ def giftList ():
         if not giverReceivers:
             logging.info("Found a valid list! Attempting to send emails...")
             logging.debug("Found a valid list! Attempting to send emails for: "+str(assignedGifters))
-            emailNames(assignedGifters.keys(), assignedGifters.values())
+            #emailNames(assignedGifters.keys(), assignedGifters.values())
             return True # Found a valid gift list!
         
         #Sort giverReceivers by least number of possible valid giftees first
@@ -123,12 +123,13 @@ def giftList ():
 
 def emailNames(gifterNames, gifteeNames):
 
-    try:
-        outFile = open('./'+str(currentYear)+' Output.txt', 'w+')
-    except Exception as ex:
-        logging.critical('Failed to open Output file, exiting...')
-        logging.critical(ex, exc_info=True)
-        exit
+    return
+    #try:
+        #outFile = open('./'+str(currentYear)+' Output.txt', 'w+')
+    #except Exception as ex:
+        #logging.critical('Failed to open Output file, exiting...')
+        #logging.critical(ex, exc_info=True)
+        #exit
 
     subject = "Secret Santa " + str(currentYear)
 
@@ -139,18 +140,18 @@ def emailNames(gifterNames, gifteeNames):
 
         message = "From: "+secret.sent_from+"\r\nTo: "+sent_to+"\r\nSubject: "+subject+"\r\n\r\n"+body
         
-        try:
-            server = smtplib.SMTP('smtp.gmail.com', 587)
-            server.set_debuglevel(1)
-            server.starttls()
-            server.login(secret.sent_from, secret.API_key)
-            server.sendmail(secret.sent_from, sent_to, message)
-            server.close()
-            logging.debug('\nEmail subject ' + subject +' with body:\n' + body + '\n')
-            logging.info('Sent to ' + gifter +' at '+sent_to+'!')
-        except Exception as ex:
-            logging.critical("Failed to send "+gifter+"'s email to: " + sent_to)
-            logging.critical(ex, exc_info=True)
+        #try:
+            #server = smtplib.SMTP('smtp.gmail.com', 587)
+            #server.set_debuglevel(1)
+            #server.starttls()
+            #server.login(secret.sent_from, secret.API_key)
+            #server.sendmail(secret.sent_from, sent_to, message)
+            #server.close()
+            #logging.debug('\nEmail subject ' + subject +' with body:\n' + body + '\n')
+            #logging.info('Sent to ' + gifter +' at '+sent_to+'!')
+        #except Exception as ex:
+            #logging.critical("Failed to send "+gifter+"'s email to: " + sent_to)
+            #logging.critical(ex, exc_info=True)
     logging.info("All emails successfully sent out!")
     outFile.close()
     return
