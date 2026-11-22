@@ -105,9 +105,6 @@ Everything lives in one folder. Nothing to install except Python.
    >
    > As a reminder the gift limit is $75, and gifts must be in your recipient's
    > hands no later than Christmas Day (December 25, `<YEAR>`)
-   >
-   > Love,
-   > -Alex
 
 3. **Apply the final roster.** In both JSON files: add new participants (a new
    gifter object plus a new email entry) and remove anyone who opted out. A brand-new
