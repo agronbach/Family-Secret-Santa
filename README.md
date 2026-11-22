@@ -143,5 +143,4 @@ Everything lives in one folder. Nothing to install except Python.
 ## Privacy
 
 Only `Magic Hat.py` and this README are safe to share publicly. `Gifternames.json`,
-`Gifteremails.json`, `secret.py`, the log, and every `Output.txt` contain personal
-data — keep them on the family NAS and off any public repository.
+`Gifteremails.json`, `secret.py`, the log, and every `Output.txt` contain personal data — keep them off any public repository.
